@@ -1,3 +1,3 @@
-## [0.0.1] - TODO: Add release date.
+## [0.0.1] - 2021-01-28.
 
-* TODO: Describe initial release.
+* 第一次上传.
