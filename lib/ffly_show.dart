@@ -1,5 +1,6 @@
 library ffly_show;
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
@@ -16,10 +17,10 @@ class FFlyMoveModel {
     this.offset : const Offset(0.0, 0.0),
     this.scale : 1.0,
     this.rotationZ : 0.0,
+    this.valueNotifier,
   });
 
   final Widget widget;
-
   AnimationController animationController;
   Animation<Offset> offsetAnimation;
   Animation<double> scaleAnimation;
@@ -32,6 +33,8 @@ class FFlyMoveModel {
   Point tempPoint;
   double tempRota;
   bool isBack;
+
+  ValueNotifier<int> valueNotifier;
 
   void reloadRotationZ() {
     if (rotationZ == 0.0) {
@@ -77,6 +80,7 @@ class FFLyShow extends StatefulWidget {
 class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
 
   final _duration = Duration(milliseconds: 200);
+  StreamController<int> _streamController;
 
   int itemCount;
   List<FFlyMoveModel> _currentChildren = [];
@@ -85,20 +89,21 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
 
   @override
   void initState() {
+    _streamController = StreamController<int>();
     itemCount = widget.children.length;
     for (var i=0; i<itemCount; i++) {
       FFlyMoveModel model = FFlyMoveModel(widget: widget.children[i], animationController: AnimationController(duration: _duration, vsync: this));
+      model.valueNotifier = ValueNotifier<int>(1);
       model.offset = Offset(0, widget.offsetV * (itemCount - 1 - i));
       model.scale = (widget.itemWidth - widget.offsetH * 2 * (itemCount - 1 - i)) / widget.itemWidth;
       model.animationController.addListener(() {
-        setState(() {});
+        model.valueNotifier.value = -model.valueNotifier.value;
       });
       model.animationController.addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           model.animationController.reset();
-          setState(() {
-            reloadLocation();
-          });
+          reloadLocation();
+          model.valueNotifier.value = -model.valueNotifier.value;
         }
       });
       _currentChildren.add(model);
@@ -120,15 +125,19 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
     for (var i=0; i<_currentChildren.length; i++) {
       _currentChildren[i].animationController.stop();
       _currentChildren[i].animationController.dispose();
+      // _currentChildren[i].valueNotifier.dispose();
     }
     for (var i=0; i<_addChildren.length; i++) {
       _addChildren[i].animationController.stop();
       _addChildren[i].animationController.dispose();
+      // _addChildren[i].valueNotifier.dispose();
     }
     for (var i=0; i<_removeChildren.length; i++) {
       _removeChildren[i].animationController.stop();
       _removeChildren[i].animationController.dispose();
+      // _removeChildren[i].valueNotifier.dispose();
     }
+    _streamController.close();
     super.dispose();
   }
 
@@ -173,10 +182,9 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
         } else {
           model.isBack = false;
         }
-        setState(() {
-          model.offset += details.delta;
-          model.rotationZ += getAngle(model.tempPoint, Point(details.localPosition.dx, details.localPosition.dy), Point(widget.itemWidth / 2, widget.itemHeight / 2), model.tempRota);
-        });
+        model.offset += details.delta;
+        model.rotationZ += getAngle(model.tempPoint, Point(details.localPosition.dx, details.localPosition.dy), Point(widget.itemWidth / 2, widget.itemHeight / 2), model.tempRota);
+        model.valueNotifier.value = -model.valueNotifier.value;
         model.tempPoint = Point(details.localPosition.dx, details.localPosition.dy);
       },
       onPanEnd: (details) {
@@ -187,10 +195,15 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
         child: SizedBox(
           width: widget.itemWidth,
           height: widget.itemHeight,
-          child: Stack(
-            alignment: Alignment.bottomCenter,
-            overflow: Overflow.clip,
-            children: getChildren(context),
+          child: StreamBuilder<int>(
+              stream: _streamController.stream,
+              builder: (context, snapshot) {
+                return Stack(
+                  alignment: Alignment.bottomCenter,
+                  overflow: Overflow.clip,
+                  children: getChildren(context),
+                );
+              }
           ),
         ),
       ),
@@ -215,26 +228,38 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
     List<Widget> children = [];
     for (var i=0; i<_addChildren.length; i++) {
       var model = _addChildren[i];
-      Widget positionWidget = buildTransformWidget(context, model);
       children.add(
-          AnimatedBuilder(
-            animation: model.animationController,
-            child: positionWidget,
-            builder: (BuildContext context, Widget child) {
-              return Opacity(opacity: model.animationController.value, child: child,);
+          ValueListenableBuilder(
+            valueListenable: model.valueNotifier,
+            builder: (context, snapshot, child) {
+              return AnimatedBuilder(
+                animation: model.animationController,
+                child: buildTransformWidget(context, model),
+                builder: (BuildContext context, Widget child) {
+                  return Opacity(opacity: model.animationController.value, child: child,);
+                },
+              );
             },
           )
       );
     }
     for (var i=0; i<_currentChildren.length; i++) {
       var model = _currentChildren[i];
-      Widget positionWidget = buildTransformWidget(context, model);
-      children.add(positionWidget);
+      children.add(ValueListenableBuilder(
+        valueListenable: model.valueNotifier,
+        builder: (context, snapshot, child) {
+          return buildTransformWidget(context, model);
+        },
+      ));
     }
     for (var i=_removeChildren.length - 1; i>=0; i--) {
       var model = _removeChildren[i];
-      Widget positionWidget = buildTransformWidget(context, model);
-      children.add(positionWidget);
+      children.add(ValueListenableBuilder(
+        valueListenable: model.valueNotifier,
+        builder: (context, snapshot, child) {
+          return buildTransformWidget(context, model);
+        },
+      ));
     }
     return children;
   }
@@ -251,6 +276,7 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
       // 移除最后一个
       FFlyMoveModel model = _currentChildren.removeLast();
       model.animationController.dispose();
+      // model.valueNotifier.dispose();
 
       // 移除动画
       final transX = model.offset.dx, transY = model.offset.dy;
@@ -265,19 +291,20 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
       seconds = max(seconds, 0.5);
       seconds = min(seconds, 2.0);
       FFlyMoveModel removeModel = FFlyMoveModel(widget: model.widget, offset: model.offset, animationController: AnimationController(duration: Duration(microseconds: (1000 * 1000 * seconds).toInt()), vsync: this));
+      removeModel.valueNotifier = ValueNotifier<int>(1);
       removeModel.tempRota = model.tempRota;
       removeModel.tempPoint = model.tempPoint;
       removeModel.rotationZ = model.rotationZ;
       removeModel.reloadRotationZ();
       removeModel.animationController.addListener(() {
-        setState(() {});
+        removeModel.valueNotifier.value = -removeModel.valueNotifier.value;
       });
       removeModel.animationController.addStatusListener((status) {
         if (status == AnimationStatus.completed) {
-          setState(() {
-            _removeChildren.remove(removeModel);
-            removeModel.animationController.dispose();
-          });
+          _removeChildren.remove(removeModel);
+          removeModel.animationController.dispose();
+          removeModel.valueNotifier.value = -removeModel.valueNotifier.value;
+          // removeModel.valueNotifier.dispose();
         }
       });
       removeModel.offsetAnimation = Tween(begin: Offset.zero, end: model.offset - Offset(transX * v, transY * v)).animate(removeModel.animationController);
@@ -298,38 +325,41 @@ class FFlyShowState extends State<FFLyShow> with TickerProviderStateMixin {
 
       // 添加动画
       FFlyMoveModel addModel = FFlyMoveModel(widget: model.widget, animationController: AnimationController(duration: _duration, vsync: this));
+      addModel.valueNotifier = ValueNotifier<int>(1);
       addModel.offset = Offset(0, widget.offsetV * (itemCount - 2));
       addModel.scale = (widget.itemWidth - widget.offsetH * 2 * (itemCount - 1)) / widget.itemWidth;
       addModel.animationController.addListener(() {
-        setState(() {});
+        addModel.valueNotifier.value = -addModel.valueNotifier.value;
       });
       addModel.animationController.addStatusListener((status) {
         if (status == AnimationStatus.completed) {
-          setState(() {
-            _addChildren.remove(addModel);
-            addModel.animationController.dispose();
+          _addChildren.remove(addModel);
+          addModel.animationController.dispose();
+          addModel.valueNotifier.value = -addModel.valueNotifier.value;
+          // addModel.valueNotifier.dispose();
 
-            FFlyMoveModel model = FFlyMoveModel(widget: addModel.widget, animationController: AnimationController(duration: _duration, vsync: this));
-            model.offset = Offset(0, widget.offsetV * (itemCount - 1));
-            model.scale = (widget.itemWidth - widget.offsetH * 2 * (itemCount - 1)) / widget.itemWidth;
-            model.animationController.addListener(() {
-              setState(() {});
-            });
-            model.animationController.addStatusListener((status) {
-              if (status == AnimationStatus.completed) {
-                model.animationController.reset();
-                setState(() {
-                  reloadLocation();
-                });
-              }
-            });
-            _currentChildren.insert(0, model);
+          FFlyMoveModel model = FFlyMoveModel(widget: addModel.widget, animationController: AnimationController(duration: _duration, vsync: this));
+          model.valueNotifier = ValueNotifier<int>(1);
+          model.offset = Offset(0, widget.offsetV * (itemCount - 1));
+          model.scale = (widget.itemWidth - widget.offsetH * 2 * (itemCount - 1)) / widget.itemWidth;
+          model.animationController.addListener(() {
+            model.valueNotifier.value = -model.valueNotifier.value;
           });
+          model.animationController.addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              model.animationController.reset();
+              reloadLocation();
+              model.valueNotifier.value = -model.valueNotifier.value;
+            }
+          });
+          _currentChildren.insert(0, model);
         }
       });
       addModel.offsetAnimation = Tween(begin: Offset.zero, end: -Offset(0, widget.offsetV)).animate(addModel.animationController);
       _addChildren.insert(0, addModel);
       addModel.animationController?.forward();
+
+      _streamController.sink.add(1);
     }
   }
 }

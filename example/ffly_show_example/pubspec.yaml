@@ -24,7 +24,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  ffly_show: ^0.0.1
+  ffly_show: ^0.0.2
   cached_network_image: ^2.1.0+1
   transparent_image: ^1.0.0
 
