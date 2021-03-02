@@ -1,4 +1,4 @@
-# ffly_show_example
+# example
 
 A new Flutter project.
 

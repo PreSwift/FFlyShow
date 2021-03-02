@@ -1,4 +1,4 @@
-name: ffly_show_example
+name: example
 description: A new Flutter project.
 
 # The following line prevents the package from being accidentally published to
@@ -24,7 +24,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  ffly_show: ^0.0.2
+  ffly_show:
+    path: ../
   cached_network_image: ^2.1.0+1
   transparent_image: ^1.0.0
 
