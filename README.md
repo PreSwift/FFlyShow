@@ -1,14 +1,90 @@
-# ffly_show
+# FFlyShow
 
-A new Flutter project.
+A Flutter plugin for iOS, Android for animation show content.
 
-## Getting Started
+![The example app running in iOS](https://github.com/PreSwift/FFlyShow/doc/y2hn0-sbe5j.gif)
 
-This project is a starting point for a Dart
-[package](https://flutter.dev/developing-packages/),
-a library module containing code that can be shared easily across
-multiple Flutter or Dart projects.
+[Feedback welcome](https://github.com/PreSwift/FFlyShow/issues) and
+[Pull Requests](https://github.com/PreSwift/FFlyShow/pulls) are most welcome!
 
-For help getting started with Flutter, view our 
-[online documentation](https://flutter.dev/docs), which offers tutorials, 
-samples, guidance on mobile development, and a full API reference.
+## Example
+
+```dart
+import 'package:ffly_show/ffly_show.dart';
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: MyHomePage(title: 'Flutter Demo Home Page'),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  MyHomePage({Key key, this.title}) : super(key: key);
+  final String title;
+
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+
+  var colors = [
+    Colors.red,
+    Colors.green,
+    Colors.yellow,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: Container(
+        padding: EdgeInsets.only(right: 20, top: 20),
+        alignment: Alignment.topRight,
+        decoration: BoxDecoration(
+          color: Colors.white,
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: FFLyShow(
+          itemWidth: 180,
+          itemHeight: 200,
+          children: getImageWidgets(),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> getImageWidgets() {
+    List<Widget> imageWidgets = [];
+    for (var i=0;i<colors.length;i++) {
+      imageWidgets.add(
+          Container(
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(5)),
+            ),
+            child: Container(
+              color: colors[i],
+            ),
+          )
+      );
+    }
+    return imageWidgets;
+  }
+}
+```
