@@ -2,7 +2,7 @@
 
 A Flutter plugin for iOS, Android for animation show content.
 
-![The example app running in iOS](https://github.com/PreSwift/FFlyShow/doc/y2hn0-sbe5j.gif)
+![The example app running in iOS](https://github.com/PreSwift/FFlyShow/blob/main/doc/y2hn0-sbe5j.gif)
 
 [Feedback welcome](https://github.com/PreSwift/FFlyShow/issues) and
 [Pull Requests](https://github.com/PreSwift/FFlyShow/pulls) are most welcome!
